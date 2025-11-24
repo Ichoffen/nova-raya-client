@@ -22,4 +22,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build
+      - name: Build portable EXE
+        run: npm run dist
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-raya-client
+          path: dist/*.exe
