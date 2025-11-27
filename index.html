@@ -70,6 +70,8 @@
         height: calc(100% - 48px);
       }
 
+      /* SIDEBAR */
+
       .sidebar {
         border-right: 1px solid #e2e8f0;
         background: #f1f5f9;
@@ -77,47 +79,105 @@
         flex-direction: column;
       }
 
-      .sidebar-header {
-        padding: 12px 12px 4px;
+      .sidebar-block {
+        padding: 10px 12px 6px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .sidebar-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #94a3b8;
+        margin-bottom: 4px;
+      }
+
+      .sidebar-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         font-size: 13px;
-        font-weight: 600;
         color: #475569;
       }
 
-      .chat-list {
-        padding: 4px;
-        overflow-y: auto;
-        flex: 1;
+      .sidebar-action {
+        font-size: 12px;
+        color: #2563eb;
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 2px 6px;
       }
 
-      .chat-item {
-        padding: 8px 10px;
+      .sidebar-action:hover {
+        background: #dbeafe;
+      }
+
+      .projects-list,
+      .chats-list {
+        padding: 4px;
+        overflow-y: auto;
+      }
+
+      .sidebar-item {
+        padding: 7px 9px;
         border-radius: 8px;
         margin-bottom: 4px;
+        cursor: pointer;
         font-size: 13px;
-        cursor: default;
         display: flex;
         flex-direction: column;
         gap: 2px;
+        text-align: left;
       }
 
-      .chat-item.active {
-        background: #e0f2fe;
-      }
-
-      .chat-item-title {
+      .sidebar-item span:first-child {
         font-weight: 500;
       }
 
-      .chat-item-subtitle {
+      .sidebar-item span:last-child {
         font-size: 11px;
-        color: #64748b;
+        color: #94a3b8;
       }
+
+      .sidebar-item.active {
+        background: #e0f2fe;
+      }
+
+      .sidebar-item:not(.active):hover {
+        background: #e5e7eb;
+      }
+
+      /* MAIN CHAT */
 
       .chat-main {
         display: flex;
         flex-direction: column;
         height: 100%;
+      }
+
+      .chat-top-bar {
+        padding: 12px 18px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 13px;
+      }
+
+      .chat-top-title {
+        font-weight: 600;
+      }
+
+      .chat-top-subtitle {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+
+      .chat-top-right {
+        font-size: 11px;
+        color: #94a3b8;
       }
 
       .chat-history {
@@ -129,9 +189,9 @@
 
       .msg {
         max-width: 70%;
-        padding: 8px 10px;
+        padding: 10px 13px;
         border-radius: 10px;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
         font-size: 14px;
         line-height: 1.4;
         white-space: pre-wrap;
@@ -139,7 +199,7 @@
 
       .msg-user {
         margin-left: auto;
-        background: #0f172a;
+        background: #020617;
         color: #f8fafc;
         border-bottom-right-radius: 2px;
       }
@@ -161,6 +221,12 @@
         border-top: 1px solid #e2e8f0;
         padding: 10px 14px;
         background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .chat-input-inner {
         display: flex;
         gap: 8px;
       }
@@ -185,7 +251,7 @@
         border: none;
         border-radius: 10px;
         padding: 0 18px;
-        background: #0f172a;
+        background: #020617;
         color: #f8fafc;
         font-size: 14px;
         font-weight: 500;
@@ -206,6 +272,12 @@
         text-transform: uppercase;
         letter-spacing: 0.04em;
       }
+
+      .chat-hint {
+        font-size: 11px;
+        color: #94a3b8;
+        padding: 0 2px;
+      }
     </style>
   </head>
   <body>
@@ -221,77 +293,342 @@
       </header>
 
       <div class="app-body">
+        <!-- SIDEBAR -->
         <aside class="sidebar">
-          <div class="sidebar-header">Чаты</div>
-          <div class="chat-list">
-            <div class="chat-item active">
-              <div class="chat-item-title">Новый диалог</div>
-              <div class="chat-item-subtitle">
-                Локальный nova-raya-client
-              </div>
+          <div class="sidebar-block">
+            <div class="sidebar-title">Проекты</div>
+            <div class="sidebar-row">
+              <span id="current-project-label">—</span>
+              <span id="add-project-btn" class="sidebar-action">+ проект</span>
             </div>
           </div>
+          <div id="projects-list" class="projects-list"></div>
+
+          <div class="sidebar-block">
+            <div class="sidebar-title">Чаты проекта</div>
+            <div class="sidebar-row">
+              <span id="current-chat-label">—</span>
+              <span id="add-chat-btn" class="sidebar-action">+ чат</span>
+            </div>
+          </div>
+          <div id="chats-list" class="chats-list"></div>
         </aside>
 
+        <!-- MAIN CHAT -->
         <main class="chat-main">
-          <div id="chat-history" class="chat-history">
-            <div class="msg msg-raya">
-              Привет, я твой локальный клиент. Пиши сообщение внизу — я отвечу
-              сюда же, пока в режиме «заглушки», без реального API.
+          <div class="chat-top-bar">
+            <div>
+              <div id="chat-title" class="chat-top-title">Новый диалог</div>
+              <div id="chat-subtitle" class="chat-top-subtitle">
+                Выбери проект и чат слева.
+              </div>
+            </div>
+            <div class="chat-top-right" id="chat-meta">
+              0 сообщений
             </div>
           </div>
 
+          <div id="chat-history" class="chat-history"></div>
+
           <form id="chat-form" class="chat-input">
-            <textarea
-              id="chat-input"
-              rows="2"
-              placeholder="Напиши что-нибудь Рае…"
-            ></textarea>
-            <button id="send-btn" class="send-btn" type="submit" disabled>
-              ➤ <span>Send</span>
-            </button>
+            <div class="chat-input-inner">
+              <textarea
+                id="chat-input"
+                rows="2"
+                placeholder="Напиши что-нибудь Рае…"
+              ></textarea>
+              <button id="send-btn" class="send-btn" type="submit" disabled>
+                ➤ <span>Send</span>
+              </button>
+            </div>
+            <div class="chat-hint">
+              Enter — отправить • Shift+Enter — перенос строки
+            </div>
           </form>
         </main>
       </div>
     </div>
 
     <script>
-      const form = document.getElementById("chat-form");
-      const textarea = document.getElementById("chat-input");
-      const sendBtn = document.getElementById("send-btn");
-      const history = document.getElementById("chat-history");
+      // ---------- МОДЕЛЬ ДАННЫХ ----------
 
-      function appendMessage({ text, from }) {
-        const bubble = document.createElement("div");
-        bubble.classList.add("msg");
-        bubble.classList.add(from === "user" ? "msg-user" : "msg-raya");
-        bubble.textContent = text;
-        history.appendChild(bubble);
-        history.scrollTop = history.scrollHeight;
+      const STORAGE_KEY = "nova-raya-projects-v1";
+
+      function makeId() {
+        return Math.random().toString(36).slice(2, 10);
       }
 
+      function loadState() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          const initialProjectId = makeId();
+          const initialChatId = makeId();
+          return {
+            projects: [
+              {
+                id: initialProjectId,
+                name: "Demo проект",
+                description: "Первый локальный проект",
+                chats: [
+                  {
+                    id: initialChatId,
+                    title: "Новый диалог",
+                    messages: [
+                      {
+                        id: makeId(),
+                        role: "raya",
+                        text:
+                          "Привет, я твой локальный клиент. Пиши сообщение внизу — " +
+                          "я отвечу сюда же, пока в режиме «заглушки», без реального API.",
+                        ts: new Date().toLocaleTimeString().slice(0, 5),
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            activeProjectId: initialProjectId,
+            activeChatId: initialChatId,
+          };
+        }
+
+        try {
+          const parsed = JSON.parse(raw);
+          if (!parsed.projects || !parsed.projects.length) {
+            throw new Error("no projects");
+          }
+          return parsed;
+        } catch (e) {
+          console.warn("Ошибка чтения state, создаю новый:", e);
+          localStorage.removeItem(STORAGE_KEY);
+          return loadState();
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      let state = loadState();
+
+      // Удобные геттеры
+      function getActiveProject() {
+        return state.projects.find((p) => p.id === state.activeProjectId) || null;
+      }
+
+      function getActiveChat() {
+        const project = getActiveProject();
+        if (!project) return null;
+        return project.chats.find((c) => c.id === state.activeChatId) || null;
+      }
+
+      // ---------- РЕНДЕР UI ----------
+
+      const projectsListEl = document.getElementById("projects-list");
+      const chatsListEl = document.getElementById("chats-list");
+      const currentProjectLabelEl = document.getElementById(
+        "current-project-label"
+      );
+      const currentChatLabelEl = document.getElementById("current-chat-label");
+      const chatTitleEl = document.getElementById("chat-title");
+      const chatSubtitleEl = document.getElementById("chat-subtitle");
+      const chatMetaEl = document.getElementById("chat-meta");
+      const chatHistoryEl = document.getElementById("chat-history");
+      const textarea = document.getElementById("chat-input");
+      const sendBtn = document.getElementById("send-btn");
+
+      function renderProjects() {
+        const project = getActiveProject();
+        currentProjectLabelEl.textContent = project ? project.name : "—";
+
+        projectsListEl.innerHTML = "";
+        state.projects.forEach((p) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className =
+            "sidebar-item" + (p.id === state.activeProjectId ? " active" : "");
+          btn.innerHTML = `
+            <span>${p.name}</span>
+            <span>${p.description || "Без описания"}</span>
+          `;
+          btn.onclick = () => {
+            state.activeProjectId = p.id;
+            // переключаемся на первый чат проекта
+            if (p.chats.length) {
+              state.activeChatId = p.chats[0].id;
+            } else {
+              state.activeChatId = null;
+            }
+            saveState();
+            renderAll();
+          };
+          projectsListEl.appendChild(btn);
+        });
+      }
+
+      function renderChats() {
+        const project = getActiveProject();
+        chatsListEl.innerHTML = "";
+
+        if (!project) {
+          currentChatLabelEl.textContent = "—";
+          return;
+        }
+
+        currentChatLabelEl.textContent = project.chats.length
+          ? "выбран чат"
+          : "нет чатов";
+
+        project.chats.forEach((chat) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className =
+            "sidebar-item" + (chat.id === state.activeChatId ? " active" : "");
+          const count = chat.messages.length;
+          btn.innerHTML = `
+            <span>${chat.title}</span>
+            <span>${count ? count + " сообщений" : "Пока пусто"}</span>
+          `;
+          btn.onclick = () => {
+            state.activeChatId = chat.id;
+            saveState();
+            renderAll();
+          };
+          chatsListEl.appendChild(btn);
+        });
+      }
+
+      function renderMessages() {
+        const chat = getActiveChat();
+
+        chatHistoryEl.innerHTML = "";
+
+        if (!chat) {
+          chatTitleEl.textContent = "Нет выбранного чата";
+          chatSubtitleEl.textContent = "Создай чат слева, чтобы начать диалог.";
+          chatMetaEl.textContent = "";
+          sendBtn.disabled = true;
+          textarea.value = "";
+          return;
+        }
+
+        chatTitleEl.textContent = chat.title;
+        chatSubtitleEl.textContent = "Проект: " + getActiveProject().name;
+        chatMetaEl.textContent = chat.messages.length + " сообщений";
+
+        chat.messages.forEach((msg) => {
+          const bubble = document.createElement("div");
+          bubble.classList.add("msg");
+          bubble.classList.add(
+            msg.role === "user" ? "msg-user" : "msg-raya"
+          );
+          bubble.innerHTML = `
+            <div class="msg-meta">
+              ${msg.role === "user" ? "Ты" : "Рая"} • ${msg.ts || ""}
+            </div>
+            <div>${msg.text}</div>
+          `;
+          chatHistoryEl.appendChild(bubble);
+        });
+
+        chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+      }
+
+      function renderAll() {
+        renderProjects();
+        renderChats();
+        renderMessages();
+      }
+
+      // ---------- ОБРАБОТЧИКИ ----------
+
+      document
+        .getElementById("add-project-btn")
+        .addEventListener("click", () => {
+          const name = prompt("Название проекта?");
+          if (!name) return;
+          const descr = prompt("Описание проекта (необязательно):") || "";
+          const id = makeId();
+          const newProject = {
+            id,
+            name,
+            description: descr,
+            chats: [],
+          };
+          state.projects.push(newProject);
+          state.activeProjectId = id;
+          state.activeChatId = null;
+          saveState();
+          renderAll();
+        });
+
+      document.getElementById("add-chat-btn").addEventListener("click", () => {
+        const project = getActiveProject();
+        if (!project) {
+          alert("Сначала создай или выбери проект.");
+          return;
+        }
+        const title = prompt("Название чата?") || "Новый чат";
+        const id = makeId();
+        const newChat = {
+          id,
+          title,
+          messages: [],
+        };
+        project.chats.push(newChat);
+        state.activeChatId = id;
+        saveState();
+        renderAll();
+      });
+
       textarea.addEventListener("input", () => {
-        sendBtn.disabled = !textarea.value.trim();
+        sendBtn.disabled = !textarea.value.trim() || !getActiveChat();
       });
 
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const text = textarea.value.trim();
-        if (!text) return;
+      document
+        .getElementById("chat-form")
+        .addEventListener("submit", (event) => {
+          event.preventDefault();
+          const chat = getActiveChat();
+          if (!chat) {
+            alert("Сначала выбери проект и чат.");
+            return;
+          }
+          const text = textarea.value.trim();
+          if (!text) return;
 
-        appendMessage({ text, from: "user" });
-        textarea.value = "";
-        sendBtn.disabled = true;
+          const ts = new Date().toLocaleTimeString().slice(0, 5);
 
-        setTimeout(() => {
-          appendMessage({
-            from: "raya",
-            text:
-              "Я пока работаю как заглушка.\n" +
-              "Позже сюда прикрутим реальный запрос к API, как только ты захочешь.",
+          chat.messages.push({
+            id: makeId(),
+            role: "user",
+            text,
+            ts,
           });
-        }, 400);
-      });
+
+          textarea.value = "";
+          sendBtn.disabled = true;
+
+          setTimeout(() => {
+            chat.messages.push({
+              id: makeId(),
+              role: "raya",
+              text:
+                "Я пока отвечаю как заглушка.\n" +
+                "Позже сюда прикрутим реальный запрос к API, как только ты захочешь.",
+              ts: new Date().toLocaleTimeString().slice(0, 5),
+            });
+            saveState();
+            renderAll();
+          }, 300);
+
+          saveState();
+          renderAll();
+        });
+
+      // ---------- ПЕРВИЧНЫЙ РЕНДЕР ----------
+
+      renderAll();
     </script>
   </body>
 </html>
