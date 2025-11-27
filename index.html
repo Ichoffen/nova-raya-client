@@ -128,6 +128,7 @@
         flex-direction: column;
         gap: 2px;
         text-align: left;
+        border: 1px solid transparent;
       }
 
       .sidebar-item span:first-child {
@@ -141,6 +142,7 @@
 
       .sidebar-item.active {
         background: #e0f2fe;
+        border-color: #94a3b8;
       }
 
       .sidebar-item:not(.active):hover {
@@ -299,7 +301,12 @@
             <div class="sidebar-title">Проекты</div>
             <div class="sidebar-row">
               <span id="current-project-label">—</span>
-              <span id="add-project-btn" class="sidebar-action">+ проект</span>
+              <span
+                class="sidebar-action"
+                onclick="handleAddProject()"
+              >
+                + проект
+              </span>
             </div>
           </div>
           <div id="projects-list" class="projects-list"></div>
@@ -308,7 +315,12 @@
             <div class="sidebar-title">Чаты проекта</div>
             <div class="sidebar-row">
               <span id="current-chat-label">—</span>
-              <span id="add-chat-btn" class="sidebar-action">+ чат</span>
+              <span
+                class="sidebar-action"
+                onclick="handleAddChat()"
+              >
+                + чат
+              </span>
             </div>
           </div>
           <div id="chats-list" class="chats-list"></div>
@@ -350,8 +362,6 @@
     </div>
 
     <script>
-      // ---------- МОДЕЛЬ ДАННЫХ ----------
-
       const STORAGE_KEY = "nova-raya-projects-v1";
 
       function makeId() {
@@ -411,7 +421,6 @@
 
       let state = loadState();
 
-      // Удобные геттеры
       function getActiveProject() {
         return state.projects.find((p) => p.id === state.activeProjectId) || null;
       }
@@ -421,8 +430,6 @@
         if (!project) return null;
         return project.chats.find((c) => c.id === state.activeChatId) || null;
       }
-
-      // ---------- РЕНДЕР UI ----------
 
       const projectsListEl = document.getElementById("projects-list");
       const chatsListEl = document.getElementById("chats-list");
@@ -453,7 +460,6 @@
           `;
           btn.onclick = () => {
             state.activeProjectId = p.id;
-            // переключаемся на первый чат проекта
             if (p.chats.length) {
               state.activeChatId = p.chats[0].id;
             } else {
@@ -540,29 +546,27 @@
         renderMessages();
       }
 
-      // ---------- ОБРАБОТЧИКИ ----------
+      // Глобальные функции для HTML-обработчиков
 
-      document
-        .getElementById("add-project-btn")
-        .addEventListener("click", () => {
-          const name = prompt("Название проекта?");
-          if (!name) return;
-          const descr = prompt("Описание проекта (необязательно):") || "";
-          const id = makeId();
-          const newProject = {
-            id,
-            name,
-            description: descr,
-            chats: [],
-          };
-          state.projects.push(newProject);
-          state.activeProjectId = id;
-          state.activeChatId = null;
-          saveState();
-          renderAll();
-        });
+      function handleAddProject() {
+        const name = prompt("Название проекта?");
+        if (!name) return;
+        const descr = prompt("Описание проекта (необязательно):") || "";
+        const id = makeId();
+        const newProject = {
+          id,
+          name,
+          description: descr,
+          chats: [],
+        };
+        state.projects.push(newProject);
+        state.activeProjectId = id;
+        state.activeChatId = null;
+        saveState();
+        renderAll();
+      }
 
-      document.getElementById("add-chat-btn").addEventListener("click", () => {
+      function handleAddChat() {
         const project = getActiveProject();
         if (!project) {
           alert("Сначала создай или выбери проект.");
@@ -579,7 +583,7 @@
         state.activeChatId = id;
         saveState();
         renderAll();
-      });
+      }
 
       textarea.addEventListener("input", () => {
         sendBtn.disabled = !textarea.value.trim() || !getActiveChat();
@@ -627,8 +631,11 @@
         });
 
       // ---------- ПЕРВИЧНЫЙ РЕНДЕР ----------
-
       renderAll();
+
+      // Делаем функции глобальными, чтобы HTML onclick их видел
+      window.handleAddProject = handleAddProject;
+      window.handleAddChat = handleAddChat;
     </script>
   </body>
 </html>
