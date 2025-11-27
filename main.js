@@ -4,18 +4,17 @@ const path = require("path");
 function createWindow() {
   const win = new BrowserWindow({
     width: 1100,
-    height: 780
+    height: 780,
+    minWidth: 900,
+    minHeight: 600,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
   });
 
-  if (app.isPackaged) {
-    // В собранном приложении открываем скомпилированный фронт
-    const indexPath = path.join(__dirname, "renderer", "index.html");
-    win.loadFile(indexPath);
-  } else {
-    // В режиме разработки — Vite dev server
-    win.loadURL("http://localhost:5173");
-    win.webContents.openDevTools();
-  }
+  // Просто грузим index.html из этой же папки
+  win.loadFile(path.join(__dirname, "index.html"));
 }
 
 app.whenReady().then(createWindow);
@@ -23,5 +22,11 @@ app.whenReady().then(createWindow);
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
+  }
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
   }
 });
