@@ -441,6 +441,22 @@
         return Math.random().toString(36).slice(2, 10);
       }
 
+      // безопасный prompt: если prompt недоступен, используем дефолт
+      function safePrompt(message, defaultValue) {
+        try {
+          if (typeof window.prompt === "function") {
+            const v = window.prompt(message, defaultValue || "");
+            if (v === null) return null;
+            const trimmed = v.trim();
+            if (!trimmed) return null;
+            return trimmed;
+          }
+        } catch (e) {
+          console.warn("prompt недоступен, использую дефолт:", e);
+        }
+        return defaultValue || null;
+      }
+
       function buildInitialState() {
         const initialProjectId = makeId();
         const initialChatId = makeId();
@@ -638,9 +654,8 @@
 
       addProjectBtn.addEventListener("click", () => {
         const index = state.projects.length + 1;
-        const suggested = "Проект " + index;
-        const name = prompt("Название проекта:", suggested);
-        if (!name) return;
+        const autoName = "Проект " + index;
+        const name = safePrompt("Название проекта:", autoName) || autoName;
         const id = makeId();
         const newProject = {
           id,
@@ -658,13 +673,20 @@
       addChatBtn.addEventListener("click", () => {
         let project = getActiveProject();
         if (!project) {
-          alert("Сначала создай или выбери проект.");
-          return;
+          // если вдруг нет проекта — создаём первый автоматически
+          const pid = makeId();
+          project = {
+            id: pid,
+            name: "Проект 1",
+            description: "",
+            chats: [],
+          };
+          state.projects.push(project);
+          state.activeProjectId = pid;
         }
         const index = project.chats.length + 1;
-        const suggested = "Чат " + index;
-        const title = prompt("Название чата:", suggested);
-        if (!title) return;
+        const autoTitle = "Чат " + index;
+        const title = safePrompt("Название чата:", autoTitle) || autoTitle;
 
         const chatId = makeId();
         const newChat = {
@@ -694,8 +716,8 @@
           alert("Сначала выбери проект.");
           return;
         }
-        const name = prompt("Новое название проекта:", project.name);
-        if (!name) return;
+        const name =
+          safePrompt("Новое название проекта:", project.name) || project.name;
         project.name = name;
         saveState();
         renderAll();
@@ -732,8 +754,8 @@
           alert("Сначала выбери чат.");
           return;
         }
-        const title = prompt("Новое название чата:", chat.title);
-        if (!title) return;
+        const title =
+          safePrompt("Новое название чата:", chat.title) || chat.title;
         chat.title = title;
         saveState();
         renderAll();
