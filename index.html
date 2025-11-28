@@ -266,7 +266,7 @@
       }
 
       .chat-input {
-        border-top: 1px solid #e2e8f0;
+        border-top: 1px солид #e2e8f0;
         padding: 10px 14px;
         background: #ffffff;
         display: flex;
@@ -441,7 +441,7 @@
         return Math.random().toString(36).slice(2, 10);
       }
 
-      // безопасный prompt: если prompt недоступен, используем дефолт
+      // безопасный prompt: если prompt недоступен или падает — возвращаем null
       function safePrompt(message, defaultValue) {
         try {
           if (typeof window.prompt === "function") {
@@ -454,7 +454,7 @@
         } catch (e) {
           console.warn("prompt недоступен, использую дефолт:", e);
         }
-        return defaultValue || null;
+        return null;
       }
 
       function buildInitialState() {
@@ -519,6 +519,38 @@
         const project = getActiveProject();
         if (!project) return null;
         return project.chats.find((c) => c.id === state.activeChatId) || null;
+      }
+
+      // автоимена — чтобы всегда хоть как-то менялось
+      function getNextProjectName() {
+        const base = "Проект";
+        let n = 1;
+        while (state.projects.some((p) => p.name === `${base} ${n}`)) {
+          n++;
+        }
+        return `${base} ${n}`;
+      }
+
+      function getNextChatTitle(project) {
+        const base = "Чат";
+        let n = 1;
+        const names = project.chats.map((c) => c.title);
+        while (names.includes(`${base} ${n}`)) {
+          n++;
+        }
+        return `${base} ${n}`;
+      }
+
+      function autoRename(oldName, existingNames) {
+        // Если вдруг prompt вернул то же самое или пусто — добавляем (2), (3), ...
+        let base = oldName.replace(/\s+\(\d+\)$/, "");
+        let n = 2;
+        let candidate = `${base} (${n})`;
+        while (existingNames.includes(candidate)) {
+          n++;
+          candidate = `${base} (${n})`;
+        }
+        return candidate;
       }
 
       // --- DOM элементы ---
@@ -653,8 +685,7 @@
       // --- Обработчики кнопок ---
 
       addProjectBtn.addEventListener("click", () => {
-        const index = state.projects.length + 1;
-        const autoName = "Проект " + index;
+        const autoName = getNextProjectName();
         const name = safePrompt("Название проекта:", autoName) || autoName;
         const id = makeId();
         const newProject = {
@@ -677,15 +708,14 @@
           const pid = makeId();
           project = {
             id: pid,
-            name: "Проект 1",
+            name: getNextProjectName(),
             description: "",
             chats: [],
           };
           state.projects.push(project);
           state.activeProjectId = pid;
         }
-        const index = project.chats.length + 1;
-        const autoTitle = "Чат " + index;
+        const autoTitle = getNextChatTitle(project);
         const title = safePrompt("Название чата:", autoTitle) || autoTitle;
 
         const chatId = makeId();
@@ -716,9 +746,17 @@
           alert("Сначала выбери проект.");
           return;
         }
-        const name =
-          safePrompt("Новое название проекта:", project.name) || project.name;
-        project.name = name;
+
+        const currentName = project.name;
+        const names = state.projects.map((p) => p.name);
+
+        let newName = safePrompt("Новое название проекта:", currentName);
+        if (!newName || newName === currentName) {
+          // prompt не сработал / вернул то же самое — меняем автоматически
+          newName = autoRename(currentName, names);
+        }
+
+        project.name = newName;
         saveState();
         renderAll();
       });
@@ -749,14 +787,22 @@
       });
 
       renameChatBtn.addEventListener("click", () => {
+        const project = getActiveProject();
         const chat = getActiveChat();
-        if (!chat) {
+        if (!project || !chat) {
           alert("Сначала выбери чат.");
           return;
         }
-        const title =
-          safePrompt("Новое название чата:", chat.title) || chat.title;
-        chat.title = title;
+
+        const currentTitle = chat.title;
+        const titles = project.chats.map((c) => c.title);
+
+        let newTitle = safePrompt("Новое название чата:", currentTitle);
+        if (!newTitle || newTitle === currentTitle) {
+          newTitle = autoRename(currentTitle, titles);
+        }
+
+        chat.title = newTitle;
         saveState();
         renderAll();
       });
@@ -769,12 +815,25 @@
           return;
         }
         if (!confirm(`Удалить чат «${chat.title}»?`)) return;
+
         project.chats = project.chats.filter((c) => c.id !== chat.id);
+
         if (project.chats.length) {
+          // если остались чаты — берём первый
           state.activeChatId = project.chats[0].id;
         } else {
-          state.activeChatId = null;
+          // если не осталось ни одного — создаём новый пустой чат
+          const newChatId = makeId();
+          const newTitle = getNextChatTitle(project);
+          const newChat = {
+            id: newChatId,
+            title: newTitle,
+            messages: [],
+          };
+          project.chats.push(newChat);
+          state.activeChatId = newChatId;
         }
+
         saveState();
         renderAll();
       });
