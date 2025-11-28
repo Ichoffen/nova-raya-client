@@ -117,6 +117,10 @@
         color: #475569;
       }
 
+      .sidebar-row + .sidebar-row {
+        margin-top: 4px;
+      }
+
       .sidebar-action {
         font-size: 12px;
         color: #2563eb;
@@ -127,6 +131,31 @@
 
       .sidebar-action:hover {
         background: #dbeafe;
+      }
+
+      .sidebar-actions-inline {
+        display: flex;
+        gap: 6px;
+        font-size: 11px;
+      }
+
+      .sidebar-mini-btn {
+        border: none;
+        background: transparent;
+        padding: 0;
+        font-size: 11px;
+        color: #64748b;
+        cursor: pointer;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+      }
+
+      .sidebar-mini-btn:hover {
+        color: #0f172a;
+      }
+
+      .sidebar-mini-btn.danger:hover {
+        color: #b91c1c;
       }
 
       .projects-list,
@@ -321,6 +350,24 @@
               <span id="current-project-label">—</span>
               <span id="add-project-btn" class="sidebar-action">+ проект</span>
             </div>
+            <div class="sidebar-row">
+              <div class="sidebar-actions-inline">
+                <button
+                  id="rename-project-btn"
+                  type="button"
+                  class="sidebar-mini-btn"
+                >
+                  Переименовать
+                </button>
+                <button
+                  id="delete-project-btn"
+                  type="button"
+                  class="sidebar-mini-btn danger"
+                >
+                  Удалить
+                </button>
+              </div>
+            </div>
           </div>
           <div id="projects-list" class="projects-list"></div>
 
@@ -329,6 +376,24 @@
             <div class="sidebar-row">
               <span id="current-chat-label">—</span>
               <span id="add-chat-btn" class="sidebar-action">+ чат</span>
+            </div>
+            <div class="sidebar-row">
+              <div class="sidebar-actions-inline">
+                <button
+                  id="rename-chat-btn"
+                  type="button"
+                  class="sidebar-mini-btn"
+                >
+                  Переименовать
+                </button>
+                <button
+                  id="delete-chat-btn"
+                  type="button"
+                  class="sidebar-mini-btn danger"
+                >
+                  Удалить
+                </button>
+              </div>
             </div>
           </div>
           <div id="chats-list" class="chats-list"></div>
@@ -440,7 +505,7 @@
         return project.chats.find((c) => c.id === state.activeChatId) || null;
       }
 
-      // --- DOM элементы (скрипт внизу, поэтому всё уже есть) ---
+      // --- DOM элементы ---
 
       const projectsListEl = document.getElementById("projects-list");
       const chatsListEl = document.getElementById("chats-list");
@@ -457,6 +522,11 @@
       const addChatBtn = document.getElementById("add-chat-btn");
       const resetBtn = document.getElementById("reset-btn");
       const form = document.getElementById("chat-form");
+
+      const renameProjectBtn = document.getElementById("rename-project-btn");
+      const deleteProjectBtn = document.getElementById("delete-project-btn");
+      const renameChatBtn = document.getElementById("rename-chat-btn");
+      const deleteChatBtn = document.getElementById("delete-chat-btn");
 
       // --- Рендер ---
 
@@ -568,10 +638,13 @@
 
       addProjectBtn.addEventListener("click", () => {
         const index = state.projects.length + 1;
+        const suggested = "Проект " + index;
+        const name = prompt("Название проекта:", suggested);
+        if (!name) return;
         const id = makeId();
         const newProject = {
           id,
-          name: "Проект " + index,
+          name,
           description: "",
           chats: [],
         };
@@ -585,22 +658,18 @@
       addChatBtn.addEventListener("click", () => {
         let project = getActiveProject();
         if (!project) {
-          // если вдруг нет проекта — создаём первый автоматически
-          const id = makeId();
-          project = {
-            id,
-            name: "Проект 1",
-            description: "",
-            chats: [],
-          };
-          state.projects.push(project);
-          state.activeProjectId = id;
+          alert("Сначала создай или выбери проект.");
+          return;
         }
         const index = project.chats.length + 1;
+        const suggested = "Чат " + index;
+        const title = prompt("Название чата:", suggested);
+        if (!title) return;
+
         const chatId = makeId();
         const newChat = {
           id: chatId,
-          title: "Чат " + index,
+          title,
           messages: [],
         };
         project.chats.push(newChat);
@@ -617,8 +686,96 @@
         renderAll();
       });
 
+      // --- Переименование / удаление проектов и чатов ---
+
+      renameProjectBtn.addEventListener("click", () => {
+        const project = getActiveProject();
+        if (!project) {
+          alert("Сначала выбери проект.");
+          return;
+        }
+        const name = prompt("Новое название проекта:", project.name);
+        if (!name) return;
+        project.name = name;
+        saveState();
+        renderAll();
+      });
+
+      deleteProjectBtn.addEventListener("click", () => {
+        const project = getActiveProject();
+        if (!project) {
+          alert("Сначала выбери проект.");
+          return;
+        }
+        if (
+          !confirm(
+            `Удалить проект «${project.name}» вместе со всеми его чатами?`
+          )
+        ) {
+          return;
+        }
+        state.projects = state.projects.filter((p) => p.id !== project.id);
+        if (!state.projects.length) {
+          state = buildInitialState();
+        } else {
+          state.activeProjectId = state.projects[0].id;
+          const first = state.projects[0];
+          state.activeChatId = first.chats.length ? first.chats[0].id : null;
+        }
+        saveState();
+        renderAll();
+      });
+
+      renameChatBtn.addEventListener("click", () => {
+        const chat = getActiveChat();
+        if (!chat) {
+          alert("Сначала выбери чат.");
+          return;
+        }
+        const title = prompt("Новое название чата:", chat.title);
+        if (!title) return;
+        chat.title = title;
+        saveState();
+        renderAll();
+      });
+
+      deleteChatBtn.addEventListener("click", () => {
+        const project = getActiveProject();
+        const chat = getActiveChat();
+        if (!project || !chat) {
+          alert("Сначала выбери чат.");
+          return;
+        }
+        if (!confirm(`Удалить чат «${chat.title}»?`)) return;
+        project.chats = project.chats.filter((c) => c.id !== chat.id);
+        if (project.chats.length) {
+          state.activeChatId = project.chats[0].id;
+        } else {
+          state.activeChatId = null;
+        }
+        saveState();
+        renderAll();
+      });
+
+      // --- Enter / Shift+Enter для ввода ---
+
       textarea.addEventListener("input", () => {
         sendBtn.disabled = !textarea.value.trim() || !getActiveChat();
+      });
+
+      textarea.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+          const chat = getActiveChat();
+          if (!chat) return;
+          event.preventDefault();
+          if (typeof form.requestSubmit === "function") {
+            form.requestSubmit();
+          } else {
+            form.dispatchEvent(
+              new Event("submit", { cancelable: true, bubbles: true })
+            );
+          }
+        }
       });
 
       form.addEventListener("submit", (event) => {
