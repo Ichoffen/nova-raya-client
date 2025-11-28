@@ -61,6 +61,23 @@
       .app-header-right {
         font-size: 12px;
         color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .reset-btn {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        cursor: pointer;
+      }
+
+      .reset-btn:hover {
+        background: #fee2e2;
+        border-color: #fecaca;
       }
 
       .app-body {
@@ -290,7 +307,8 @@
           <div>Nova Raya Client</div>
         </div>
         <div class="app-header-right">
-          Локальный клиент. Пока без API-ключа, просто болтаем.
+          <button id="reset-btn" class="reset-btn">Сбросить всё</button>
+          <span>Локальный клиент. Пока без API-ключа, просто болтаем.</span>
         </div>
       </header>
 
@@ -301,12 +319,7 @@
             <div class="sidebar-title">Проекты</div>
             <div class="sidebar-row">
               <span id="current-project-label">—</span>
-              <span
-                class="sidebar-action"
-                onclick="handleAddProject()"
-              >
-                + проект
-              </span>
+              <span id="add-project-btn" class="sidebar-action">+ проект</span>
             </div>
           </div>
           <div id="projects-list" class="projects-list"></div>
@@ -315,12 +328,7 @@
             <div class="sidebar-title">Чаты проекта</div>
             <div class="sidebar-row">
               <span id="current-chat-label">—</span>
-              <span
-                class="sidebar-action"
-                onclick="handleAddChat()"
-              >
-                + чат
-              </span>
+              <span id="add-chat-btn" class="sidebar-action">+ чат</span>
             </div>
           </div>
           <div id="chats-list" class="chats-list"></div>
@@ -368,40 +376,43 @@
         return Math.random().toString(36).slice(2, 10);
       }
 
+      function buildInitialState() {
+        const initialProjectId = makeId();
+        const initialChatId = makeId();
+        return {
+          projects: [
+            {
+              id: initialProjectId,
+              name: "Demo проект",
+              description: "Первый локальный проект",
+              chats: [
+                {
+                  id: initialChatId,
+                  title: "Новый диалог",
+                  messages: [
+                    {
+                      id: makeId(),
+                      role: "raya",
+                      text:
+                        "Привет, я твой локальный клиент. Пиши сообщение внизу — " +
+                        "я отвечу сюда же, пока в режиме «заглушки», без реального API.",
+                      ts: new Date().toLocaleTimeString().slice(0, 5),
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          activeProjectId: initialProjectId,
+          activeChatId: initialChatId,
+        };
+      }
+
       function loadState() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) {
-          const initialProjectId = makeId();
-          const initialChatId = makeId();
-          return {
-            projects: [
-              {
-                id: initialProjectId,
-                name: "Demo проект",
-                description: "Первый локальный проект",
-                chats: [
-                  {
-                    id: initialChatId,
-                    title: "Новый диалог",
-                    messages: [
-                      {
-                        id: makeId(),
-                        role: "raya",
-                        text:
-                          "Привет, я твой локальный клиент. Пиши сообщение внизу — " +
-                          "я отвечу сюда же, пока в режиме «заглушки», без реального API.",
-                        ts: new Date().toLocaleTimeString().slice(0, 5),
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-            activeProjectId: initialProjectId,
-            activeChatId: initialChatId,
-          };
+          return buildInitialState();
         }
-
         try {
           const parsed = JSON.parse(raw);
           if (!parsed.projects || !parsed.projects.length) {
@@ -411,15 +422,15 @@
         } catch (e) {
           console.warn("Ошибка чтения state, создаю новый:", e);
           localStorage.removeItem(STORAGE_KEY);
-          return loadState();
+          return buildInitialState();
         }
       }
+
+      let state = loadState();
 
       function saveState() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
-
-      let state = loadState();
 
       function getActiveProject() {
         return state.projects.find((p) => p.id === state.activeProjectId) || null;
@@ -431,167 +442,185 @@
         return project.chats.find((c) => c.id === state.activeChatId) || null;
       }
 
-      const projectsListEl = document.getElementById("projects-list");
-      const chatsListEl = document.getElementById("chats-list");
-      const currentProjectLabelEl = document.getElementById(
-        "current-project-label"
-      );
-      const currentChatLabelEl = document.getElementById("current-chat-label");
-      const chatTitleEl = document.getElementById("chat-title");
-      const chatSubtitleEl = document.getElementById("chat-subtitle");
-      const chatMetaEl = document.getElementById("chat-meta");
-      const chatHistoryEl = document.getElementById("chat-history");
-      const textarea = document.getElementById("chat-input");
-      const sendBtn = document.getElementById("send-btn");
+      document.addEventListener("DOMContentLoaded", () => {
+        const projectsListEl = document.getElementById("projects-list");
+        const chatsListEl = document.getElementById("chats-list");
+        const currentProjectLabelEl = document.getElementById(
+          "current-project-label"
+        );
+        const currentChatLabelEl =
+          document.getElementById("current-chat-label");
+        const chatTitleEl = document.getElementById("chat-title");
+        const chatSubtitleEl = document.getElementById("chat-subtitle");
+        const chatMetaEl = document.getElementById("chat-meta");
+        const chatHistoryEl = document.getElementById("chat-history");
+        const textarea = document.getElementById("chat-input");
+        const sendBtn = document.getElementById("send-btn");
+        const addProjectBtn = document.getElementById("add-project-btn");
+        const addChatBtn = document.getElementById("add-chat-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const form = document.getElementById("chat-form");
 
-      function renderProjects() {
-        const project = getActiveProject();
-        currentProjectLabelEl.textContent = project ? project.name : "—";
+        function renderProjects() {
+          const project = getActiveProject();
+          currentProjectLabelEl.textContent = project ? project.name : "—";
 
-        projectsListEl.innerHTML = "";
-        state.projects.forEach((p) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className =
-            "sidebar-item" + (p.id === state.activeProjectId ? " active" : "");
-          btn.innerHTML = `
-            <span>${p.name}</span>
-            <span>${p.description || "Без описания"}</span>
-          `;
-          btn.onclick = () => {
-            state.activeProjectId = p.id;
-            if (p.chats.length) {
-              state.activeChatId = p.chats[0].id;
-            } else {
-              state.activeChatId = null;
-            }
-            saveState();
-            renderAll();
+          projectsListEl.innerHTML = "";
+          state.projects.forEach((p) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className =
+              "sidebar-item" +
+              (p.id === state.activeProjectId ? " active" : "");
+            btn.innerHTML = `
+              <span>${p.name}</span>
+              <span>${p.description || "Без описания"}</span>
+            `;
+            btn.addEventListener("click", () => {
+              state.activeProjectId = p.id;
+              if (p.chats.length) {
+                state.activeChatId = p.chats[0].id;
+              } else {
+                state.activeChatId = null;
+              }
+              saveState();
+              renderAll();
+            });
+            projectsListEl.appendChild(btn);
+          });
+        }
+
+        function renderChats() {
+          const project = getActiveProject();
+          chatsListEl.innerHTML = "";
+
+          if (!project) {
+            currentChatLabelEl.textContent = "—";
+            return;
+          }
+
+          currentChatLabelEl.textContent = project.chats.length
+            ? "выбран чат"
+            : "нет чатов";
+
+          project.chats.forEach((chat) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className =
+              "sidebar-item" +
+              (chat.id === state.activeChatId ? " active" : "");
+            const count = chat.messages.length;
+            btn.innerHTML = `
+              <span>${chat.title}</span>
+              <span>${count ? count + " сообщений" : "Пока пусто"}</span>
+            `;
+            btn.addEventListener("click", () => {
+              state.activeChatId = chat.id;
+              saveState();
+              renderAll();
+            });
+            chatsListEl.appendChild(btn);
+          });
+        }
+
+        function renderMessages() {
+          const chat = getActiveChat();
+
+          chatHistoryEl.innerHTML = "";
+
+          if (!chat) {
+            chatTitleEl.textContent = "Нет выбранного чата";
+            chatSubtitleEl.textContent =
+              "Создай чат слева, чтобы начать диалог.";
+            chatMetaEl.textContent = "";
+            sendBtn.disabled = true;
+            textarea.value = "";
+            return;
+          }
+
+          chatTitleEl.textContent = chat.title;
+          const project = getActiveProject();
+          chatSubtitleEl.textContent = project
+            ? "Проект: " + project.name
+            : "";
+          chatMetaEl.textContent = chat.messages.length + " сообщений";
+
+          chat.messages.forEach((msg) => {
+            const bubble = document.createElement("div");
+            bubble.classList.add("msg");
+            bubble.classList.add(
+              msg.role === "user" ? "msg-user" : "msg-raya"
+            );
+            bubble.innerHTML = `
+              <div class="msg-meta">
+                ${msg.role === "user" ? "Ты" : "Рая"} • ${msg.ts || ""}
+              </div>
+              <div>${msg.text}</div>
+            `;
+            chatHistoryEl.appendChild(bubble);
+          });
+
+          chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
+        }
+
+        function renderAll() {
+          renderProjects();
+          renderChats();
+          renderMessages();
+        }
+
+        // --- Обработчики ---
+
+        addProjectBtn.addEventListener("click", () => {
+          const name = prompt("Название проекта?");
+          if (!name) return;
+          const descr = prompt("Описание проекта (необязательно):") || "";
+          const id = makeId();
+          const newProject = {
+            id,
+            name,
+            description: descr,
+            chats: [],
           };
-          projectsListEl.appendChild(btn);
+          state.projects.push(newProject);
+          state.activeProjectId = id;
+          state.activeChatId = null;
+          saveState();
+          renderAll();
         });
-      }
 
-      function renderChats() {
-        const project = getActiveProject();
-        chatsListEl.innerHTML = "";
-
-        if (!project) {
-          currentChatLabelEl.textContent = "—";
-          return;
-        }
-
-        currentChatLabelEl.textContent = project.chats.length
-          ? "выбран чат"
-          : "нет чатов";
-
-        project.chats.forEach((chat) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className =
-            "sidebar-item" + (chat.id === state.activeChatId ? " active" : "");
-          const count = chat.messages.length;
-          btn.innerHTML = `
-            <span>${chat.title}</span>
-            <span>${count ? count + " сообщений" : "Пока пусто"}</span>
-          `;
-          btn.onclick = () => {
-            state.activeChatId = chat.id;
-            saveState();
-            renderAll();
+        addChatBtn.addEventListener("click", () => {
+          const project = getActiveProject();
+          if (!project) {
+            alert("Сначала создай или выбери проект.");
+            return;
+          }
+          const title = prompt("Название чата?") || "Новый чат";
+          const id = makeId();
+          const newChat = {
+            id,
+            title,
+            messages: [],
           };
-          chatsListEl.appendChild(btn);
-        });
-      }
-
-      function renderMessages() {
-        const chat = getActiveChat();
-
-        chatHistoryEl.innerHTML = "";
-
-        if (!chat) {
-          chatTitleEl.textContent = "Нет выбранного чата";
-          chatSubtitleEl.textContent = "Создай чат слева, чтобы начать диалог.";
-          chatMetaEl.textContent = "";
-          sendBtn.disabled = true;
-          textarea.value = "";
-          return;
-        }
-
-        chatTitleEl.textContent = chat.title;
-        chatSubtitleEl.textContent = "Проект: " + getActiveProject().name;
-        chatMetaEl.textContent = chat.messages.length + " сообщений";
-
-        chat.messages.forEach((msg) => {
-          const bubble = document.createElement("div");
-          bubble.classList.add("msg");
-          bubble.classList.add(
-            msg.role === "user" ? "msg-user" : "msg-raya"
-          );
-          bubble.innerHTML = `
-            <div class="msg-meta">
-              ${msg.role === "user" ? "Ты" : "Рая"} • ${msg.ts || ""}
-            </div>
-            <div>${msg.text}</div>
-          `;
-          chatHistoryEl.appendChild(bubble);
+          project.chats.push(newChat);
+          state.activeChatId = id;
+          saveState();
+          renderAll();
         });
 
-        chatHistoryEl.scrollTop = chatHistoryEl.scrollHeight;
-      }
+        resetBtn.addEventListener("click", () => {
+          if (!confirm("Сбросить все проекты и чаты?")) return;
+          localStorage.removeItem(STORAGE_KEY);
+          state = buildInitialState();
+          saveState();
+          renderAll();
+        });
 
-      function renderAll() {
-        renderProjects();
-        renderChats();
-        renderMessages();
-      }
+        textarea.addEventListener("input", () => {
+          sendBtn.disabled = !textarea.value.trim() || !getActiveChat();
+        });
 
-      // Глобальные функции для HTML-обработчиков
-
-      function handleAddProject() {
-        const name = prompt("Название проекта?");
-        if (!name) return;
-        const descr = prompt("Описание проекта (необязательно):") || "";
-        const id = makeId();
-        const newProject = {
-          id,
-          name,
-          description: descr,
-          chats: [],
-        };
-        state.projects.push(newProject);
-        state.activeProjectId = id;
-        state.activeChatId = null;
-        saveState();
-        renderAll();
-      }
-
-      function handleAddChat() {
-        const project = getActiveProject();
-        if (!project) {
-          alert("Сначала создай или выбери проект.");
-          return;
-        }
-        const title = prompt("Название чата?") || "Новый чат";
-        const id = makeId();
-        const newChat = {
-          id,
-          title,
-          messages: [],
-        };
-        project.chats.push(newChat);
-        state.activeChatId = id;
-        saveState();
-        renderAll();
-      }
-
-      textarea.addEventListener("input", () => {
-        sendBtn.disabled = !textarea.value.trim() || !getActiveChat();
-      });
-
-      document
-        .getElementById("chat-form")
-        .addEventListener("submit", (event) => {
+        form.addEventListener("submit", (event) => {
           event.preventDefault();
           const chat = getActiveChat();
           if (!chat) {
@@ -630,12 +659,8 @@
           renderAll();
         });
 
-      // ---------- ПЕРВИЧНЫЙ РЕНДЕР ----------
-      renderAll();
-
-      // Делаем функции глобальными, чтобы HTML onclick их видел
-      window.handleAddProject = handleAddProject;
-      window.handleAddChat = handleAddChat;
+        renderAll();
+      });
     </script>
   </body>
 </html>
